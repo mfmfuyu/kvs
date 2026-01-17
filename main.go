@@ -13,9 +13,11 @@ import (
 )
 
 var Handlers = map[string]func([]resp.Value) resp.Value{
-	"PING": cmd.Ping,
-	"SET":  cmd.Set,
-	"GET":  cmd.Get,
+	"PING":   cmd.Ping,
+	"SET":    cmd.Set,
+	"GET":    cmd.Get,
+	"EXPIRE": cmd.Expire,
+	"TTL":    cmd.Ttl,
 }
 
 func main() {

@@ -17,7 +17,7 @@ const (
 type Value struct {
 	Typ   string
 	Str   string
-	Num   int
+	Num   int64
 	Bulk  string
 	Array []Value
 }
@@ -42,7 +42,7 @@ func Null() Value {
 	return Value{Typ: "null"}
 }
 
-func Integer(num int) Value {
+func Integer(num int64) Value {
 	return Value{Typ: "integer", Num: num}
 }
 
@@ -208,7 +208,7 @@ func (v Value) marshalNull() []byte {
 func (v Value) marshalInteger() []byte {
 	var bytes []byte
 	bytes = append(bytes, INTEGER)
-	bytes = append(bytes, strconv.Itoa(v.Num)...)
+	bytes = append(bytes, strconv.FormatInt(v.Num, 10)...)
 	bytes = append(bytes, '\r', '\n')
 
 	return bytes
