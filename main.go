@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -20,8 +21,20 @@ var Handlers = map[string]func([]resp.Value) resp.Value{
 	"TTL":    cmd.Ttl,
 }
 
+var port int64
+
 func main() {
-	l, err := net.Listen("tcp", ":6379")
+	const (
+		defaultPort = 6379
+		usage       = "TCP port number to listen on"
+	)
+
+	flag.Int64Var(&port, "port", defaultPort, usage)
+	flag.Parse()
+
+	address := fmt.Sprintf(":%d", port)
+
+	l, err := net.Listen("tcp", address)
 	if err != nil {
 		panic(err)
 	}
