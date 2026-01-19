@@ -15,13 +15,12 @@ func (o Object) HasExpiry() bool {
 	return !o.ExpiresAt.IsZero()
 }
 
-func (o Object) IsExpired() bool {
+func (o Object) IsExpired(t time.Time) bool {
 	if !o.HasExpiry() {
 		return false
 	}
 
-	now := time.Now()
-	return !now.Before(o.ExpiresAt)
+	return !t.Before(o.ExpiresAt)
 }
 
 var objects = map[string]Object{}
@@ -36,7 +35,7 @@ func Get(key string) (string, bool) {
 		return "", false
 	}
 
-	if obj.IsExpired() {
+	if obj.IsExpired(time.Now()) {
 		return "", false
 	}
 
