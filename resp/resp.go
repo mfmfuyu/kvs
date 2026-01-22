@@ -92,6 +92,10 @@ func (r *Resp) Read() (Value, error) {
 		return r.readArray()
 	case BULK:
 		return r.readBulk()
+	case ERROR:
+		return r.readError()
+	case STRING:
+		return r.readString()
 	default:
 		return Value{}, nil
 	}
@@ -128,13 +132,46 @@ func (r *Resp) readBulk() (Value, error) {
 		return v, err
 	}
 
-	bulk := make([]byte, len)
+	if len == -1 {
+		// null
+		v.Typ = "null"
+	} else {
+		bulk := make([]byte, len)
 
-	r.reader.Read(bulk)
+		r.reader.Read(bulk)
 
-	v.Bulk = string(bulk)
+		v.Bulk = string(bulk)
 
-	r.readLine()
+		r.readLine()
+	}
+
+	return v, nil
+}
+
+func (r *Resp) readError() (Value, error) {
+	v := Value{}
+	v.Typ = "error"
+
+	e, _, err := r.readLine()
+	if err != nil {
+		return v, err
+	}
+
+	v.Str = string(e)
+
+	return v, nil
+}
+
+func (r *Resp) readString() (Value, error) {
+	v := Value{}
+	v.Typ = "string"
+
+	s, _, err := r.readLine()
+	if err != nil {
+		return v, err
+	}
+
+	v.Str = string(s)
 
 	return v, nil
 }
