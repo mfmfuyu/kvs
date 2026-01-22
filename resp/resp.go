@@ -96,6 +96,12 @@ func (r *Resp) Read() (Value, error) {
 		return r.readError()
 	case STRING:
 		return r.readString()
+	case INTEGER:
+		num, _, err := r.readInteger()
+		if err != nil {
+			return Value{}, nil
+		}
+		return Value{Typ: "integer", Num: int64(num)}, nil
 	default:
 		return Value{}, nil
 	}

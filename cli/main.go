@@ -78,6 +78,8 @@ func main() {
 			fmt.Printf("\"%s\"\n", res.Bulk)
 		case "string":
 			fmt.Println(res.Str)
+		case "integer":
+			fmt.Printf("(integer) %d\n", res.Num)
 		case "null":
 			fmt.Println("(null)")
 		case "error":
