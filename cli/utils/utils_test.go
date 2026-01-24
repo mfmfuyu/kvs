@@ -74,3 +74,37 @@ func TestParse(t *testing.T) {
 		assert.Equal(t, testCase.expected, Parse(testCase.value))
 	}
 }
+
+func TestDigits(t *testing.T) {
+	type TestCase struct {
+		value    int
+		expected int
+	}
+
+	var testCases = []TestCase{
+		{
+			value:    1,
+			expected: 1,
+		},
+		{
+			value:    0,
+			expected: 1,
+		},
+		{
+			value:    10,
+			expected: 2,
+		},
+		{
+			value:    -1,
+			expected: 1,
+		},
+		{
+			value:    -10,
+			expected: 2,
+		},
+	}
+
+	for _, testCase := range testCases {
+		assert.Equal(t, testCase.expected, Digits(testCase.value))
+	}
+}

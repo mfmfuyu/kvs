@@ -84,6 +84,11 @@ func main() {
 			fmt.Println("(null)")
 		case "error":
 			fmt.Println(res.Str)
+		case "array":
+			l := utils.Digits(len(res.Array))
+			for i, v := range res.Array {
+				fmt.Printf("%*d) \"%s\"\n", l, i+1, v.Bulk)
+			}
 		}
 	}
 }

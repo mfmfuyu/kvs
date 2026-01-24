@@ -53,3 +53,21 @@ func Parse(text string) []string {
 
 	return result
 }
+
+func Digits(n int) int {
+	if n == 0 {
+		return 1
+	}
+
+	if n < 0 {
+		n = -n
+	}
+
+	d := 0
+	for n > 0 {
+		n /= 10
+		d++
+	}
+
+	return d
+}
