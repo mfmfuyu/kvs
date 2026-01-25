@@ -53,42 +53,76 @@ func main() {
 		}
 
 		args := utils.Parse(line)
-
-		var values []resp.Value
-		for _, a := range args {
-			values = append(values, resp.Bulk(a))
+		if args == nil {
+			continue
 		}
 
-		writer.Write(resp.Array(values))
-		res, err := re.Read()
-		if err != nil {
-			if err == io.EOF {
-				break
+		writer.Write(toRespArray(args))
+		isSubscribe := strings.ToUpper(args[0]) == "SUBSCRIBE"
+		if isSubscribe {
+			for {
+				res, err := re.Read()
+				if err != nil {
+					if err == io.EOF {
+						continue
+					}
+
+					if errors.Is(err, syscall.ECONNRESET) {
+						continue
+					}
+
+					panic(err)
+				}
+
+				print(res)
+				if res.Typ == "error" {
+					break
+				}
+			}
+		} else {
+			res, err := re.Read()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+
+				if errors.Is(err, syscall.ECONNRESET) {
+					break
+				}
+
+				panic(err)
 			}
 
-			if errors.Is(err, syscall.ECONNRESET) {
-				break
-			}
-
-			panic(err)
+			print(res)
 		}
+	}
+}
 
-		switch res.Typ {
-		case "bulk":
-			fmt.Printf("\"%s\"\n", res.Bulk)
-		case "string":
-			fmt.Println(res.Str)
-		case "integer":
-			fmt.Printf("(integer) %d\n", res.Num)
-		case "null":
-			fmt.Println("(null)")
-		case "error":
-			fmt.Println(res.Str)
-		case "array":
-			l := utils.Digits(len(res.Array))
-			for i, v := range res.Array {
-				fmt.Printf("%*d) \"%s\"\n", l, i+1, v.Bulk)
-			}
+func toRespArray(args []string) resp.Value {
+	var values []resp.Value
+	for _, a := range args {
+		values = append(values, resp.Bulk(a))
+	}
+
+	return resp.Array(values)
+}
+
+func print(res resp.Value) {
+	switch res.Typ {
+	case "bulk":
+		fmt.Printf("\"%s\"\n", res.Bulk)
+	case "string":
+		fmt.Println(res.Str)
+	case "integer":
+		fmt.Printf("(integer) %d\n", res.Num)
+	case "null":
+		fmt.Println("(null)")
+	case "error":
+		fmt.Println(res.Str)
+	case "array":
+		l := utils.Digits(len(res.Array))
+		for i, v := range res.Array {
+			fmt.Printf("%*d) \"%s\"\n", l, i+1, v.Bulk)
 		}
 	}
 }
