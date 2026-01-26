@@ -15,5 +15,5 @@ func Set(args []resp.Value) resp.Value {
 
 	kv.Set(key, value)
 
-	return resp.String(value)
+	return resp.String("OK")
 }

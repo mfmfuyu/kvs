@@ -16,5 +16,5 @@ func Get(args []resp.Value) resp.Value {
 		return resp.Null()
 	}
 
-	return resp.String(value)
+	return resp.Bulk(value)
 }
