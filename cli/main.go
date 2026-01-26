@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -30,11 +31,13 @@ func main() {
 	flag.Int64Var(&port, "p", defaultPort, usagePort)
 	flag.Parse()
 
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := net.JoinHostPort(host, strconv.FormatInt(port, 10))
+
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		panic(err)
 	}
+	defer conn.Close()
 
 	re := resp.NewResp(conn)
 	writer := resp.NewWriter(conn)
@@ -74,7 +77,7 @@ func main() {
 					panic(err)
 				}
 
-				print(res)
+				fmt.Print(format(res, 0))
 				if res.Typ == "error" {
 					break
 				}
@@ -93,7 +96,7 @@ func main() {
 				panic(err)
 			}
 
-			print(res)
+			fmt.Print(format(res, 0))
 		}
 	}
 }
@@ -107,22 +110,33 @@ func toRespArray(args []string) resp.Value {
 	return resp.Array(values)
 }
 
-func print(res resp.Value) {
+func format(res resp.Value, nest int) string {
 	switch res.Typ {
 	case "bulk":
-		fmt.Printf("\"%s\"\n", res.Bulk)
+		return fmt.Sprintf("\"%s\"\n", res.Bulk)
 	case "string":
-		fmt.Println(res.Str)
+		return res.Str + "\n"
 	case "integer":
-		fmt.Printf("(integer) %d\n", res.Num)
+		return fmt.Sprintf("(integer) %d\n", res.Num)
 	case "null":
-		fmt.Println("(null)")
+		return "(null)\n"
 	case "error":
-		fmt.Println(res.Str)
+		return res.Str + "\n"
 	case "array":
+		var b strings.Builder
 		l := utils.Digits(len(res.Array))
 		for i, v := range res.Array {
-			fmt.Printf("%*d) \"%s\"\n", l, i+1, v.Bulk)
+			spaces := l
+			if nest > 0 && i > 0 {
+				spaces += nest
+			}
+
+			s := fmt.Sprintf("%*d) %s", spaces, i+1, format(v, spaces+1+1))
+			b.WriteString(s)
 		}
+
+		return b.String()
 	}
+
+	return ""
 }
