@@ -20,5 +20,4 @@ func Get(req *request.Request) {
 	}
 
 	req.Client.Write(resp.Bulk(value))
-	return
 }

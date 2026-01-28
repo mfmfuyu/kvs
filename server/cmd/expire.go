@@ -33,5 +33,4 @@ func Expire(req *request.Request) {
 	}
 
 	req.Client.Write(resp.Integer(1))
-	return
 }
