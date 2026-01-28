@@ -9,18 +9,22 @@ import (
 	"strings"
 	"syscall"
 
-	"example.com/kvs/cmd"
 	"example.com/kvs/resp"
+	"example.com/kvs/server/client"
+	"example.com/kvs/server/cmd"
+	"example.com/kvs/server/request"
 )
 
-var Handlers = map[string]func([]resp.Value) resp.Value{
-	"PING":   cmd.Ping,
-	"SET":    cmd.Set,
-	"GET":    cmd.Get,
-	"EXPIRE": cmd.Expire,
-	"TTL":    cmd.Ttl,
+var Handlers = map[string]func(*request.Request){
+	"PING":        cmd.Ping,
+	"SET":         cmd.Set,
+	"GET":         cmd.Get,
+	"EXPIRE":      cmd.Expire,
+	"TTL":         cmd.Ttl,
+	"SUBSCRIBE":   cmd.Subscribe,
+	"UNSUBSCRIBE": cmd.UnSubscribe,
+	"PUBLISH":     cmd.Publish,
 }
-
 var port int64
 
 func main() {
@@ -56,6 +60,8 @@ func handleConnection(conn net.Conn) {
 	res := resp.NewResp(conn)
 	writer := resp.NewWriter(conn)
 
+	client := client.New(writer)
+
 	for {
 		value, err := res.Read()
 		if err != nil {
@@ -89,12 +95,16 @@ func handleConnection(conn net.Conn) {
 			}
 
 			errMsg := fmt.Sprintf("ERR unknown command '%s', with args beginning with: %s", command, strings.Join(strArgs, " "))
-			writer.Write(resp.Error(errMsg))
+			client.Write(resp.Error(errMsg))
 
 			continue
 		}
 
-		result := handler(args)
-		writer.Write(result)
+		request := &request.Request{
+			Args:   args,
+			Client: client,
+		}
+
+		handler(request)
 	}
 }
