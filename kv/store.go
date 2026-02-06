@@ -48,8 +48,11 @@ func Set(key string, value string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	delete(expires, key)
+
 	objects[key] = Object{
-		Value: value,
+		Value:     value,
+		ExpiresAt: time.Time{},
 	}
 }
 
