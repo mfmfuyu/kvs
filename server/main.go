@@ -8,7 +8,9 @@ import (
 	"net"
 	"strings"
 	"syscall"
+	"time"
 
+	"example.com/kvs/kv"
 	"example.com/kvs/resp"
 	"example.com/kvs/server/client"
 	"example.com/kvs/server/cmd"
@@ -43,6 +45,16 @@ func main() {
 		panic(err)
 	}
 	defer l.Close()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for {
+			<-ticker.C
+			kv.ActiveExpire()
+		}
+	}()
 
 	for {
 		conn, err := l.Accept()

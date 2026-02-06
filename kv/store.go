@@ -24,6 +24,8 @@ func (o Object) IsExpired(t time.Time) bool {
 }
 
 var objects = map[string]Object{}
+var expires = map[string]struct{}{}
+
 var mutex = sync.RWMutex{}
 
 func Get(key string) (string, bool) {
@@ -63,6 +65,8 @@ func SetExpiresAt(key string, expireAt time.Time) bool {
 	object.ExpiresAt = expireAt
 	objects[key] = object
 
+	expires[key] = struct{}{}
+
 	return true
 }
 
@@ -71,6 +75,7 @@ func Del(key string) {
 	defer mutex.Unlock()
 
 	delete(objects, key)
+	delete(expires, key)
 }
 
 func Ttl(key string) int64 {
@@ -92,4 +97,28 @@ func Ttl(key string) int64 {
 	}
 
 	return int64(math.Ceil(diff.Seconds()))
+}
+
+func ActiveExpire() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	budget := 10
+
+	for key := range expires {
+		budget--
+		if budget < 0 {
+			break
+		}
+
+		obj, ok := objects[key]
+		if !ok {
+			continue
+		}
+
+		if obj.IsExpired(time.Now()) {
+			delete(objects, key)
+			delete(expires, key)
+		}
+	}
 }
