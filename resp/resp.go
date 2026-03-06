@@ -84,7 +84,7 @@ func (r *Resp) readInteger() (x int, n int, err error) {
 func (r *Resp) Read() (Value, error) {
 	_type, err := r.reader.ReadByte()
 	if err != nil {
-		return Value{}, nil
+		return Value{}, err
 	}
 
 	switch _type {
@@ -99,7 +99,7 @@ func (r *Resp) Read() (Value, error) {
 	case INTEGER:
 		num, _, err := r.readInteger()
 		if err != nil {
-			return Value{}, nil
+			return Value{}, err
 		}
 		return Value{Typ: "integer", Num: int64(num)}, nil
 	default:
