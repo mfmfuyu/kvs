@@ -59,7 +59,7 @@ func main() {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			panic(conn)
+			panic(err)
 		}
 
 		go handleConnection(conn)
