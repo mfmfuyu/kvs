@@ -125,3 +125,11 @@ func ActiveExpire() {
 		}
 	}
 }
+
+func FlushAll() {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	clear(objects)
+	clear(expires)
+}

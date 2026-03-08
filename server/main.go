@@ -26,6 +26,7 @@ var Handlers = map[string]func(*request.Request){
 	"SUBSCRIBE":   cmd.Subscribe,
 	"UNSUBSCRIBE": cmd.UnSubscribe,
 	"PUBLISH":     cmd.Publish,
+	"FLUSHALL":    cmd.FlushAll,
 }
 var port int64
 
