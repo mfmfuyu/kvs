@@ -6,7 +6,7 @@ import (
 	"example.com/kvs/server/request"
 )
 
-func Ttl(req *request.Request) {
+func (c *Commands) Ttl(req *request.Request) {
 	if len(req.Args) != 1 {
 		req.Client.Write(InvalidArg("ttl"))
 		return

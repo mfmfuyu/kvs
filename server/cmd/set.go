@@ -6,7 +6,7 @@ import (
 	"example.com/kvs/server/request"
 )
 
-func Set(req *request.Request) {
+func (c *Commands) Set(req *request.Request) {
 	if len(req.Args) != 2 {
 		req.Client.Write(InvalidArg("set"))
 		return

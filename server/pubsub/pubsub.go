@@ -1,90 +1,129 @@
 package pubsub
 
 import (
-	"maps"
 	"sync"
 
 	"example.com/kvs/resp"
 	"example.com/kvs/server/client"
+	"github.com/gobwas/glob"
 )
 
-var channelSubscribers = make(map[string]map[*client.Client]struct{})
-var clientSubscriptions = make(map[*client.Client]map[string]struct{})
+type PubSub struct {
+	channelSubscribers  map[string]map[*client.Client]struct{}
+	clientSubscriptions map[*client.Client]map[string]struct{}
+	patternSubscribers  map[string]map[*client.Client]struct{}
+	clientPatterns      map[*client.Client]map[string]struct{}
 
-var mutex sync.RWMutex
+	mutex sync.RWMutex
+}
 
-func Subscribe(c *client.Client, channel string) int {
-	mutex.Lock()
-	defer mutex.Unlock()
+func NewPubSub() *PubSub {
+	return &PubSub{
+		channelSubscribers:  make(map[string]map[*client.Client]struct{}),
+		clientSubscriptions: make(map[*client.Client]map[string]struct{}),
+		patternSubscribers:  make(map[string]map[*client.Client]struct{}),
+		clientPatterns:      map[*client.Client]map[string]struct{}{},
+	}
+}
 
-	subscribers, ok := channelSubscribers[channel]
+func (ps *PubSub) internalSubscribe(
+	clientToTargets map[*client.Client]map[string]struct{},
+	targetToClients map[string]map[*client.Client]struct{},
+	c *client.Client,
+	t string,
+) int {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	subscribers, ok := targetToClients[t]
 	if !ok {
-		// no subscribers
 		subscribers = map[*client.Client]struct{}{}
 	}
 
-	subscriptions, ok := clientSubscriptions[c]
+	subscriptions, ok := clientToTargets[c]
 	if !ok {
-		// no subscriptions
 		subscriptions = map[string]struct{}{}
 	}
 
-	_, ok = subscribers[c]
-	if ok {
-		// already subscribed
-		return len(subscriptions)
-	}
-
-	// subscribers
 	subscribers[c] = struct{}{}
-	channelSubscribers[channel] = subscribers
+	targetToClients[t] = subscribers
 
-	// subscriptions
-	subscriptions[channel] = struct{}{}
-	clientSubscriptions[c] = subscriptions
+	subscriptions[t] = struct{}{}
+	clientToTargets[c] = subscriptions
 
-	return len(subscriptions)
+	return len(ps.clientPatterns[c]) + len(ps.clientSubscriptions[c])
 }
 
-func Unsubscribe(c *client.Client, channel string) int {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (ps *PubSub) internalUnsubscribe(
+	clientToTargets map[*client.Client]map[string]struct{},
+	targetToClients map[string]map[*client.Client]struct{},
+	c *client.Client,
+	t string,
+) int {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
 
-	subscriptions, ok := clientSubscriptions[c]
-	if !ok {
-		// no subscriptions
-		return 0
-	}
+	subscriptions := clientToTargets[c]
+	subscribers := targetToClients[t]
 
-	subscribers, ok := channelSubscribers[channel]
-	if !ok {
-		// not subscribed
-		return len(subscriptions)
-	}
-
-	// subscribers
 	delete(subscribers, c)
-	channelSubscribers[channel] = subscribers
-
-	// subscriptions
-	delete(subscriptions, channel)
-	clientSubscriptions[c] = subscriptions
-
-	return len(subscriptions)
-}
-
-func Publish(channel string, message string) int {
-	mutex.RLock()
-
-	a, ok := channelSubscribers[channel]
-	if !ok {
-		mutex.RUnlock()
-		return 0
+	if len(subscribers) == 0 {
+		delete(targetToClients, t)
 	}
 
-	clients := maps.Keys(a)
+	delete(subscriptions, t)
+	if len(subscriptions) == 0 {
+		delete(clientToTargets, c)
+	}
 
-	mutex.RUnlock()
+	return len(ps.clientPatterns[c]) + len(ps.clientSubscriptions[c])
+}
+
+func (ps *PubSub) Subscribe(c *client.Client, channel string) int {
+	return ps.internalSubscribe(ps.clientSubscriptions, ps.channelSubscribers, c, channel)
+}
+
+func (ps *PubSub) Unsubscribe(c *client.Client, channel string) int {
+	return ps.internalUnsubscribe(ps.clientSubscriptions, ps.channelSubscribers, c, channel)
+}
+
+func (ps *PubSub) PSubscribe(c *client.Client, channel string) int {
+	return ps.internalSubscribe(ps.clientPatterns, ps.patternSubscribers, c, channel)
+}
+
+func (ps *PubSub) PUnsubscribe(c *client.Client, channel string) int {
+	return ps.internalUnsubscribe(ps.clientPatterns, ps.patternSubscribers, c, channel)
+}
+
+func (ps *PubSub) Publish(channel string, message string) int {
+	ps.mutex.RLock()
+
+	type patternDelivery struct {
+		c *client.Client
+		p string
+	}
+	patternDeliveries := []patternDelivery{}
+
+	for pattern, subscribers := range ps.patternSubscribers {
+		g := glob.MustCompile(pattern)
+		if g.Match(channel) {
+			for subscriber := range subscribers {
+				patternDeliveries = append(patternDeliveries, patternDelivery{
+					c: subscriber,
+					p: pattern,
+				})
+			}
+		}
+	}
+
+	deliveries := []*client.Client{}
+	subscribers := ps.channelSubscribers[channel]
+
+	for subscriber := range subscribers {
+		deliveries = append(deliveries, subscriber)
+	}
+
+	ps.mutex.RUnlock()
 
 	msg := resp.Array([]resp.Value{
 		resp.Bulk("message"),
@@ -93,8 +132,19 @@ func Publish(channel string, message string) int {
 	})
 
 	sent := 0
-	for client := range clients {
-		client.Write(msg)
+	for _, delivery := range deliveries {
+		delivery.Write(msg)
+		sent++
+	}
+
+	for _, delivery := range patternDeliveries {
+		msg = resp.Array([]resp.Value{
+			resp.Bulk("pmessage"),
+			resp.Bulk(delivery.p),
+			resp.Bulk(channel),
+			resp.Bulk(message),
+		})
+		delivery.c.Write(msg)
 		sent++
 	}
 

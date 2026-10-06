@@ -5,19 +5,19 @@ import (
 	"example.com/kvs/server/request"
 )
 
-func (c *Commands) Subscribe(req *request.Request) {
+func (c *Commands) PUnsubscribe(req *request.Request) {
 	if len(req.Args) < 1 {
-		req.Client.Write(InvalidArg("subscribe"))
+		req.Client.Write(InvalidArg("punsubscribe"))
 		return
 	}
 
 	for _, a := range req.Args {
-		channel := a.Bulk
-		subscribes := c.pubsub.Subscribe(req.Client, channel)
+		pattern := a.Bulk
+		subscribes := c.pubsub.PUnsubscribe(req.Client, pattern)
 
 		req.Client.Write(resp.Array([]resp.Value{
-			resp.Bulk("subscribe"),
-			resp.Bulk(channel),
+			resp.Bulk("punsubscribe"),
+			resp.Bulk(pattern),
 			resp.Integer(int64(subscribes)),
 		}))
 	}

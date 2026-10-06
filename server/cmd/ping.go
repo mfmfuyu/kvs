@@ -5,7 +5,7 @@ import (
 	"example.com/kvs/server/request"
 )
 
-func Ping(req *request.Request) {
+func (c *Commands) Ping(req *request.Request) {
 	if len(req.Args) > 1 {
 		req.Client.Write(InvalidArg("ping"))
 		return

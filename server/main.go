@@ -14,20 +14,10 @@ import (
 	"example.com/kvs/resp"
 	"example.com/kvs/server/client"
 	"example.com/kvs/server/cmd"
+	"example.com/kvs/server/pubsub"
 	"example.com/kvs/server/request"
 )
 
-var Handlers = map[string]func(*request.Request){
-	"PING":        cmd.Ping,
-	"SET":         cmd.Set,
-	"GET":         cmd.Get,
-	"EXPIRE":      cmd.Expire,
-	"TTL":         cmd.Ttl,
-	"SUBSCRIBE":   cmd.Subscribe,
-	"UNSUBSCRIBE": cmd.UnSubscribe,
-	"PUBLISH":     cmd.Publish,
-	"FLUSHALL":    cmd.FlushAll,
-}
 var port int64
 
 func main() {
@@ -47,6 +37,23 @@ func main() {
 	}
 	defer l.Close()
 
+	ps := pubsub.NewPubSub()
+	commands := cmd.NewCommands(ps)
+
+	handlers := map[string]func(*request.Request){
+		"PING":         commands.Ping,
+		"SET":          commands.Set,
+		"GET":          commands.Get,
+		"EXPIRE":       commands.Expire,
+		"TTL":          commands.Ttl,
+		"SUBSCRIBE":    commands.Subscribe,
+		"PSUBSCRIBE":   commands.PSubscribe,
+		"UNSUBSCRIBE":  commands.Unsubscribe,
+		"PUNSUBSCRIBE": commands.PUnsubscribe,
+		"PUBLISH":      commands.Publish,
+		"FLUSHALL":     commands.FlushAll,
+	}
+
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -63,11 +70,11 @@ func main() {
 			panic(err)
 		}
 
-		go handleConnection(conn)
+		go handleConnection(conn, handlers)
 	}
 }
 
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, handlers map[string]func(*request.Request)) {
 	defer conn.Close()
 
 	res := resp.NewResp(conn)
@@ -100,7 +107,7 @@ func handleConnection(conn net.Conn) {
 		command := strings.ToUpper(value.Array[0].Bulk)
 		args := value.Array[1:]
 
-		handler, ok := Handlers[command]
+		handler, ok := handlers[command]
 		if !ok {
 			strArgs := []string{}
 			for i := range args {

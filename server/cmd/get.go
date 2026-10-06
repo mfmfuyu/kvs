@@ -6,7 +6,7 @@ import (
 	"example.com/kvs/server/request"
 )
 
-func Get(req *request.Request) {
+func (c *Commands) Get(req *request.Request) {
 	if len(req.Args) != 1 {
 		req.Client.Write(InvalidArg("get"))
 		return

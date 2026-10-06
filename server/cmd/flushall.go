@@ -6,7 +6,7 @@ import (
 	"example.com/kvs/server/request"
 )
 
-func FlushAll(req *request.Request) {
+func (c *Commands) FlushAll(req *request.Request) {
 	kv.FlushAll()
 
 	req.Client.Write(resp.String("OK"))
